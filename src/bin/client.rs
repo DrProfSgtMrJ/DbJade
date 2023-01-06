@@ -5,7 +5,7 @@ extern crate lazy_static;
 extern crate log;
 
 use server::logger::ConfigLogger;
-use server::client;
+use server::jadeclient;
 
 use clap::Parser;
 use log::LevelFilter;
@@ -51,7 +51,7 @@ async fn main() {
     ensure_states();
 
     let host = &APP_ARGS.host;
-    let client = client::Client::new(host.to_string(), APP_ARGS.port);
+    let client = jadeclient::Client::new(host.to_string(), APP_ARGS.port);
     info!("Attempting to connected to: {}:{}", host, APP_ARGS.port);
     match client.connect().await {
         Ok(_result) => {

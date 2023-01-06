@@ -6,7 +6,8 @@ pub enum ServerOp {
         db_name: String
     },
     ListDbs,
-    Disconnect
+    Disconnect,
+    Dummy,
 }
 
 impl fmt::Display for ServerOp {
