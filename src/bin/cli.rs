@@ -5,6 +5,7 @@ extern crate lazy_static;
 extern crate log;
 
 use server::logger::ConfigLogger;
+use server::client;
 
 use clap::Parser;
 use log::LevelFilter;
@@ -42,11 +43,22 @@ fn ensure_states() {
     let _ = APP_ARGS.deref();
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // Initialize shared logger
     let lvl_filter = LevelFilter::from_str(&APP_ARGS.log_level).expect("invalid log level");
-    let _logger = ConfigLogger::init(lvl_filter);
-
-    info!("starting up");
+    let _ = ConfigLogger::init(lvl_filter).expect("Failed to initialize logger");
     ensure_states();
+
+    let host = &APP_ARGS.host;
+    let client = client::Client::new(host.to_string(), APP_ARGS.port);
+    info!("Attempting to connected to: {}:{}", host, APP_ARGS.port);
+    match client.connect().await {
+        Ok(_result) => {
+            info!("Connected!");
+        }
+        Err(err) => {
+            error!("An Error Occured: {}", err)
+        }
+    }
 }

@@ -1,14 +1,11 @@
 use tokio::net::TcpStream;
-use tokio::io::{AsyncWriteExt, Result};
 
-const ADDR: &str = "localhost:7676"; // Your own address : TODO change to be configured
-
-struct Client {
+pub struct Client {
     host: String,
-    port: String
+    port: u16
 }
 impl Client {
-    pub fn new(host: String, port: String) -> Self {
+    pub fn new(host: String, port: u16) -> Self {
         Client {host, port}
     }
 
