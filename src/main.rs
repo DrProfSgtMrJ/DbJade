@@ -1,9 +1,6 @@
-mod ops;
-
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
-use ops::Op;
-
+use server::ops::ServerOp;
 
 const ADDR: &str = "localhost:7676"; // Your own address : TODO change to be configured
 const CHANNEL_NUM: usize = 10;
@@ -13,7 +10,7 @@ const CHANNEL_NUM: usize = 10;
 async fn main() {
      // Create listener instance that bounds to certain address
     let listener = TcpListener::bind(ADDR).await.expect("Failed to connect");
-    let (tx, mut rx) = mpsc::channel::<Op>(CHANNEL_NUM);
+    let (tx, mut rx) = mpsc::channel::<ServerOp>(CHANNEL_NUM);
 
     loop {
         match listener.accept().await {
