@@ -4,8 +4,8 @@ extern crate lazy_static;
 #[macro_use]
 extern crate log;
 
-use server::logger::ConfigLogger;
-use server::jadeclient;
+use dbjade::logger::ConfigLogger;
+use dbjade::jadeclient;
 
 use clap::Parser;
 use log::LevelFilter;

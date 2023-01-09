@@ -2,7 +2,7 @@ use std::net::TcpStream;
 
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
-use server::ops::ServerOp;
+use dbjade::ops::ServerOp;
 
 const ADDR: &str = "localhost:7676"; // Your own address : TODO change to be configured
 const CHANNEL_NUM: usize = 10;
