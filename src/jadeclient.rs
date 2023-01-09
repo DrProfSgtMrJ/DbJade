@@ -13,7 +13,7 @@ impl Client {
     }
 
     pub async fn connect(&self) -> Result<TcpStream, std::io::Error>{
-        let full_addr = format!("{:#?}", self);
+        let full_addr = format!("{}:{}", self.host, self.port);
         TcpStream::connect(full_addr).await
     }
 }

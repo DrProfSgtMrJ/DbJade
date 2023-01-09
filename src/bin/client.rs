@@ -9,7 +9,10 @@ use dbjade::jadeclient;
 
 use clap::Parser;
 use log::LevelFilter;
+use tokio::io::AsyncWriteExt;
 use std::{ops::Deref, str::FromStr};
+use dbjade::serverops::ServerOp;
+use bincode;
 
 #[derive(Parser, Default, Debug)]
 #[clap(
@@ -54,8 +57,12 @@ async fn main() {
     let client = jadeclient::Client::new(host.to_string(), APP_ARGS.port);
     info!("Attempting to connected to: {}:{}", host, APP_ARGS.port);
     match client.connect().await {
-        Ok(_result) => {
+        Ok(mut stream) => {
             info!("Connected!");
+            stream.write(&bincode::serialize(&ServerOp::Dummy).unwrap()).await.map_err(|err| format!("Failed to Send {err}"));
+            loop {
+
+            }
         }
         Err(err) => {
             error!("An Error Occured: {}", err)

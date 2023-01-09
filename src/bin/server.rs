@@ -1,34 +1,49 @@
-use std::net::TcpStream;
-
-use tokio::net::TcpListener;
-use tokio::sync::mpsc;
-use dbjade::ops::ServerOp;
+use dbjade::serverops::ServerOp;
+use tokio::io::{BufReader};
+use tokio::net::TcpStream;
+use tokio::{net::TcpListener, io::AsyncReadExt};
+use tokio::sync::broadcast;
 
 const ADDR: &str = "localhost:7676"; // Your own address : TODO change to be configured
-const CHANNEL_NUM: usize = 10;
+const CHANNEL_NUM: usize = 100;
+use std::io;
 use std::net::{SocketAddr};
+use bincode;
 
 
 #[tokio::main]
 async fn main() {
      // Create listener instance that bounds to certain address
-    let listener = TcpListener::bind(ADDR).await.map_err(|err|  panic!("Failed to connect: {err}")).unwrap();
-    let (tx, mut rx) = mpsc::channel::<(ServerOp, SocketAddr)>(CHANNEL_NUM);
+    let listener = TcpListener::bind(ADDR).await.map_err(|err|  panic!("Failed to bind: {err}")).unwrap();
+    let (tx, mut rx) = broadcast::channel::<(ServerOp, SocketAddr)>(CHANNEL_NUM);
     
+
     loop {
-        match listener.accept().await {
-            Ok((mut socket, addr)) => {
-                let tx = tx.clone();
-                tokio::spawn(async move {
-                    if let Err(err) = tx.send((ServerOp::Dummy, addr)).await {
-                        eprintln!("Cannont send data. {err}");
+        if let Ok((mut socket, addr)) = listener.accept().await {
+            let tx = tx.clone();
+            let mut rx = tx.subscribe();
+            println!("Receieved stream from: {}", addr);
+            let mut buf = vec![0, 255];
+            tokio::select! {
+                result = socket.read(&mut buf) => {
+                    match result {
+                        Ok(res) => println!("Bytes Read: {res}"),
+                        Err(_) => println!(""),
                     }
-                });
-                println!("Received stream from: {}", addr);
-            }
-            Err(err) => {
-                println!("Received Error {}", err);
+                    tx.send((ServerOp::Dummy, addr)).unwrap();
+                }
+                result = rx.recv() =>{
+                    match result {
+                        Ok(msg, ..) => println!("Hit: {:#?}", msg),
+                        Err(err) => eprintln!("Error {err}"),
+                    }
+                }
             }
         }
     }
+}
+
+
+fn process(mut socket: TcpStream) -> Result<ServerOp, io::Error> {
+    Ok(ServerOp::Dummy)
 }
