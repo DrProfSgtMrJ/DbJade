@@ -5,7 +5,7 @@ use serde::{Serialize, Deserialize};
 /// Server Level Operations
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ServerOp {
-    Init,
+    Init {host: String, port: u16},
     ConnectTo {
         db_name: String
     },
@@ -25,7 +25,7 @@ impl fmt::Display for ServerOp {
 impl From<&ServerOp> for u8 {
     fn from(op: &ServerOp) -> Self {
         match op {
-            ServerOp::Init => 1,
+            ServerOp::Init {..} => 1,
             ServerOp::ConnectTo { .. } => 2,
             ServerOp::ListDbs => 3,
             ServerOp::Disconnect => 4,
