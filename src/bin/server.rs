@@ -1,15 +1,14 @@
+use dbjade::{CHANNEL_NUM};
+use dbjade::clientresponse::ClientResponse;
+use dbjade::connection::Connection;
 use dbjade::serverops::ServerOp;
-use tokio::io::{BufReader};
 use tokio::net::TcpStream;
-use tokio::{net::TcpListener, io::AsyncReadExt};
+use tokio::{net::TcpListener};
 use tokio::sync::mpsc;
 
 const ADDR: &str = "localhost:7676"; // Your own address : TODO change to be configured
-const CHANNEL_NUM: usize = 100;
-use std::io;
 use std::net::{SocketAddr};
-use bincode;
-
+    
 
 #[tokio::main]
 async fn main() {
@@ -19,12 +18,12 @@ async fn main() {
     
     tokio::spawn(async move {
         loop {
-            if let Ok((mut socket, addr)) = listener.accept().await {
-                let tx = tx.clone();
+            if let Ok((socket, addr)) = listener.accept().await {
                 println!("Receieved stream from: {}", addr);
-                let mut buf = vec![0, 255];
-                if let Ok(result) = tx.send((ServerOp::Dummy, addr)).await {
-                    println!("Sent dummy data");
+                let tx = tx.clone();
+                let mut connection = Connection::new(socket);
+                if let Ok(Some(result)) = connection.read::<ServerOp>().await {
+                    tx.send((result, addr)).await.expect("Failed to send over data through channel");
                 }
             }
         }
@@ -32,15 +31,21 @@ async fn main() {
 
     while let Some(serverop) = rx.recv().await {
         match serverop {
-            (ServerOp::Dummy, ..) => println!("Received a Dummy message"),
+            (ServerOp::Init, addr) => {
+                let stream = TcpStream::connect(addr).await.expect("Failed to Connect to client");
+                let mut connection = Connection::new(stream);
+                let clientresp = ClientResponse::Connected { id: 200 };
+                connection.write(&clientresp).await.expect("Failed to write back");
+            }
+            (ServerOp::Dummy, addr) => {
+                let stream = TcpStream::connect(addr).await.expect("Failed to Connect to client");
+                let mut connection = Connection::new(stream);
+                let clientresp = ClientResponse::Dummy;
+                connection.write(&clientresp).await.expect("Failed to write back");
+            }
             (ServerOp::ConnectTo { .. }, ..) => println!("Received a ConnectTo message"),
             (ServerOp::ListDbs, ..) => println!("Received a ListDbs message"),
             (ServerOp::Disconnect, ..) => println!("Received a Disconnect message"),
         }
     }
-}
-
-
-fn process(mut socket: TcpStream) -> Result<ServerOp, io::Error> {
-    Ok(ServerOp::Dummy)
 }

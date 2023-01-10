@@ -4,15 +4,17 @@ extern crate lazy_static;
 #[macro_use]
 extern crate log;
 
-use dbjade::logger::ConfigLogger;
-use dbjade::jadeclient;
+use dbjade::serverops::ServerOp;
+use dbjade::{logger::ConfigLogger, clientresponse::ClientResponse};
+use dbjade::{jadeclient, CHANNEL_NUM};
 
 use clap::Parser;
 use log::LevelFilter;
-use tokio::io::AsyncWriteExt;
 use std::{ops::Deref, str::FromStr};
-use dbjade::serverops::ServerOp;
-use bincode;
+use dbjade::connection::Connection;
+use tokio::{net::TcpListener};
+use tokio::sync::mpsc;
+use std::net::{SocketAddr};
 
 #[derive(Parser, Default, Debug)]
 #[clap(
@@ -54,18 +56,47 @@ async fn main() {
     ensure_states();
 
     let host = &APP_ARGS.host;
-    let client = jadeclient::Client::new(host.to_string(), APP_ARGS.port);
+    let mut client = jadeclient::Client::new(host.to_string(), APP_ARGS.port);
     info!("Attempting to connected to: {}:{}", host, APP_ARGS.port);
     match client.connect().await {
-        Ok(mut stream) => {
+        Ok(_) => {
             info!("Connected!");
-            stream.write(&bincode::serialize(&ServerOp::Dummy).unwrap()).await.map_err(|err| format!("Failed to Send {err}"));
-            loop {
+            let listener = TcpListener::bind("localhost:0").await.map_err(|err|  panic!("Failed to bind: {err}")).unwrap();
+            let (tx, mut rx) = mpsc::channel::<(ClientResponse, SocketAddr)>(CHANNEL_NUM);
+            tokio::spawn(async move {
+                loop {
+                    if let Ok((socket, addr)) = listener.accept().await {
+                        info!("Receieved stream from: {}", addr);
+                        let tx = tx.clone();
+                        let mut connection = Connection::new(socket);
+                        if let Ok(Some(result)) = connection.read::<ClientResponse>().await {
+                            tx.send((result, addr)).await.expect("Failed to send over data through channel");
+                        }
+                    }
+                }
 
+            });
+
+            while let Some(clientresponse) = rx.recv().await {
+                match clientresponse {
+                    (ClientResponse::Connected {id}, ..) => {
+                        info!("Assigning Id: {id}");
+                        client.set_id(id);
+                    },
+                    (ClientResponse::ListDbs { names}, ..) => {
+                        for dbname in names {
+                            info!("Name: {dbname}");
+                        }
+                    }
+                    (ClientResponse::Dummy, ..) => {
+                        info!("Just a dummy");
+                    }
+                }
             }
         }
         Err(err) => {
             error!("An Error Occured: {}", err)
         }
     }
+
 }

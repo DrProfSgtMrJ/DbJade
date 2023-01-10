@@ -83,6 +83,7 @@ name = "dbjade"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "bytes",
  "clap",
  "lazy_static",
  "log",
